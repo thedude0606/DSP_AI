@@ -2,9 +2,9 @@
 
 ## Phase 1: Extract and synthesize API documentation from provided HTML files
 
-- [ ] Analyze each HTML file to identify API endpoints, request/response structures, authentication methods, and data models.
-- [ ] Consolidate extracted information into a structured API documentation format (e.g., Markdown).
-- [ ] Identify gaps or ambiguities in the documentation that require further research.
+- [x] Analyze each HTML file to identify API endpoints, request/response structures, authentication methods, and data models.
+- [x] Consolidate extracted information into a structured API documentation format (e.g., Markdown).
+- [x] Identify gaps or ambiguities in the documentation that require further research.
 
 ## Phase 2: Set up GitHub repository and initial project documentation
 

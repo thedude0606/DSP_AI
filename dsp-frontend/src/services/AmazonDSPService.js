@@ -3,14 +3,20 @@
  * Handles all interactions with Amazon DSP APIs
  */
 
+import { ProfilesApi, Configuration } from "../api";
+
 class AmazonDSPService {
   constructor(credentials) {
-    this.clientId = credentials.clientId
-    this.clientSecret = credentials.clientSecret
-    this.refreshToken = credentials.refreshToken
-    this.accessToken = null
-    this.baseURL = 'https://advertising-api.amazon.com'
-    this.profileId = null
+    this.clientId = credentials.clientId;
+    this.clientSecret = credentials.clientSecret;
+    this.refreshToken = credentials.refreshToken;
+    this.accessToken = null;
+    this.baseURL = "http://localhost:3000"; // Base URL for the proxy
+
+    this.profilesApi = new ProfilesApi(new Configuration({
+      basePath: `${this.baseURL}/advertising-api`,
+      accessToken: () => this.accessToken, // Function to get the current access token
+    }));
   }
 
   /**
@@ -18,7 +24,7 @@ class AmazonDSPService {
    */
   async authenticate() {
     try {
-      const response = await fetch('https://api.amazon.com/auth/o2/token', {
+      const response = await fetch(`${this.baseURL}/auth/o2/token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
@@ -29,27 +35,29 @@ class AmazonDSPService {
           client_id: this.clientId,
           client_secret: this.clientSecret
         })
-      })
+      });
 
       if (!response.ok) {
-        throw new Error(`Authentication failed: ${response.statusText}`)
+        throw new Error(`Authentication failed: ${response.statusText}`);
       }
 
-      const data = await response.json()
-      this.accessToken = data.access_token
-      return this.accessToken
+      const data = await response.json();
+      this.accessToken = data.access_token;
+      return this.accessToken;
     } catch (error) {
-      console.error('Authentication error:', error)
-      throw error
+      console.error('Authentication error:', error);
+      throw error;
     }
   }
 
   /**
    * Make authenticated API request
+   * This method is now largely replaced by the generated client methods.
+   * Keeping it for other non-profile related calls if needed, but profiles will use generated client.
    */
   async makeRequest(method, endpoint, data = null, profileId = null) {
     if (!this.accessToken) {
-      await this.authenticate()
+      await this.authenticate();
     }
 
     const config = {
@@ -59,41 +67,41 @@ class AmazonDSPService {
         'Amazon-Advertising-API-ClientId': this.clientId,
         'Content-Type': 'application/json'
       }
-    }
+    };
 
     if (profileId || this.profileId) {
-      config.headers['Amazon-Advertising-API-Scope'] = profileId || this.profileId
+      config.headers['Amazon-Advertising-API-Scope'] = profileId || this.profileId;
     }
 
     if (data) {
-      config.body = JSON.stringify(data)
+      config.body = JSON.stringify(data);
     }
 
     try {
-      const response = await fetch(`${this.baseURL}${endpoint}`, config)
+      const response = await fetch(`${this.baseURL}/advertising-api${endpoint}`, config);
       
       if (response.status === 401) {
         // Token expired, refresh and retry
-        await this.authenticate()
-        config.headers['Authorization'] = `Bearer ${this.accessToken}`
-        const retryResponse = await fetch(`${this.baseURL}${endpoint}`, config)
+        await this.authenticate();
+        config.headers['Authorization'] = `Bearer ${this.accessToken}`;
+        const retryResponse = await fetch(`${this.baseURL}/advertising-api${endpoint}`, config);
         
         if (!retryResponse.ok) {
-          throw new Error(`API request failed: ${retryResponse.statusText}`)
+          throw new Error(`API request failed: ${retryResponse.statusText}`);
         }
         
-        return await retryResponse.json()
+        return await retryResponse.json();
       }
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(`API request failed: ${response.statusText} - ${JSON.stringify(errorData)}`)
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`API request failed: ${response.statusText} - ${JSON.stringify(errorData)}`);
       }
 
-      return await response.json()
+      return await response.json();
     } catch (error) {
-      console.error('API request error:', error)
-      throw error
+      console.error('API request error:', error);
+      throw error;
     }
   }
 
@@ -102,26 +110,28 @@ class AmazonDSPService {
    */
   async validateCredentials() {
     try {
-      await this.authenticate()
-      // Test with a simple API call
-      await this.getProfiles()
-      return true
+      await this.authenticate();
+      // Test with a simple API call using the generated client
+      await this.getProfiles();
+      return true;
     } catch (error) {
-      console.error('Credential validation failed:', error)
-      return false
+      console.error('Credential validation failed:', error);
+      return false;
     }
   }
 
   /**
-   * Get available profiles
+   * Get available profiles using the generated client
    */
   async getProfiles() {
     try {
-      const response = await this.makeRequest('GET', '/v2/profiles')
-      return response
+      const profiles = await this.profilesApi.listProfiles({
+        amazonAdvertisingAPIClientId: this.clientId,
+      });
+      return profiles;
     } catch (error) {
-      console.error('Failed to get profiles:', error)
-      throw error
+      console.error('Failed to get profiles:', error);
+      throw error;
     }
   }
 
@@ -130,15 +140,15 @@ class AmazonDSPService {
    */
   async getEntities() {
     try {
-      const profiles = await this.getProfiles()
+      const profiles = await this.getProfiles();
       return profiles.map(profile => ({
         entityId: profile.profileId,
         entityName: profile.accountInfo?.name || `Profile ${profile.profileId}`,
         entityType: profile.accountInfo?.type || 'ADVERTISER'
-      }))
+      }));
     } catch (error) {
-      console.error('Failed to get entities:', error)
-      throw error
+      console.error('Failed to get entities:', error);
+      throw error;
     }
   }
 
@@ -147,15 +157,15 @@ class AmazonDSPService {
    */
   async getAdvertisers() {
     try {
-      const profiles = await this.getProfiles()
+      const profiles = await this.getProfiles();
       return profiles.map(profile => ({
         advertiserId: profile.profileId,
         advertiserName: profile.accountInfo?.name || `Advertiser ${profile.profileId}`,
         entityId: profile.profileId
-      }))
+      }));
     } catch (error) {
-      console.error('Failed to get advertisers:', error)
-      throw error
+      console.error('Failed to get advertisers:', error);
+      throw error;
     }
   }
 
@@ -164,7 +174,7 @@ class AmazonDSPService {
    */
   async createCampaign(campaignData) {
     try {
-      this.profileId = campaignData.advertiserId
+      this.profileId = campaignData.advertiserId;
 
       // Create the main campaign
       const campaign = await this.makeRequest('POST', '/dsp/campaigns/v1/campaigns', {
@@ -173,18 +183,18 @@ class AmazonDSPService {
         budget: campaignData.budget,
         schedule: campaignData.schedule,
         status: 'ACTIVE'
-      })
+      });
 
       // Create line items based on targeting and inventory selection
-      const lineItems = await this.createLineItems(campaign.campaignId, campaignData)
+      const lineItems = await this.createLineItems(campaign.campaignId, campaignData);
 
       return {
         campaign,
         lineItems
-      }
+      };
     } catch (error) {
-      console.error('Failed to create campaign:', error)
-      throw error
+      console.error('Failed to create campaign:', error);
+      throw error;
     }
   }
 
@@ -192,14 +202,14 @@ class AmazonDSPService {
    * Create line items for a campaign
    */
   async createLineItems(campaignId, campaignData) {
-    const lineItems = []
+    const lineItems = [];
 
     try {
       // Create line items for each selected inventory source
-      const { publishers, contextual, amazonOO } = campaignData.selectedInventory
+      const { publishers, contextual, amazonOO } = campaignData.selectedInventory;
 
       // Handle geographic targeting
-      const geoTargets = this.parseGeographicTargeting(campaignData.targeting)
+      const geoTargets = this.parseGeographicTargeting(campaignData.targeting);
 
       // Create line items for 3P Publisher Deals
       for (const publisher of publishers) {
@@ -214,8 +224,8 @@ class AmazonDSPService {
                 ...campaignData.targeting,
                 geographic: [geoTarget]
               }
-            })
-            lineItems.push(lineItem)
+            });
+            lineItems.push(lineItem);
           }
         } else {
           // Create single line item for all geographic targets
@@ -227,8 +237,8 @@ class AmazonDSPService {
               ...campaignData.targeting,
               geographic: geoTargets
             }
-          })
-          lineItems.push(lineItem)
+          });
+          lineItems.push(lineItem);
         }
       }
 
@@ -242,8 +252,8 @@ class AmazonDSPService {
             ...campaignData.targeting,
             geographic: geoTargets
           }
-        })
-        lineItems.push(lineItem)
+        });
+        lineItems.push(lineItem);
       }
 
       // Create line items for Amazon O&O
@@ -256,14 +266,14 @@ class AmazonDSPService {
             ...campaignData.targeting,
             geographic: geoTargets
           }
-        })
-        lineItems.push(lineItem)
+        });
+        lineItems.push(lineItem);
       }
 
-      return lineItems
+      return lineItems;
     } catch (error) {
-      console.error('Failed to create line items:', error)
-      throw error
+      console.error('Failed to create line items:', error);
+      throw error;
     }
   }
 
@@ -284,12 +294,12 @@ class AmazonDSPService {
           type: 'CPM'
         },
         status: 'ACTIVE'
-      })
+      });
 
-      return lineItem
+      return lineItem;
     } catch (error) {
-      console.error('Failed to create line item:', error)
-      throw error
+      console.error('Failed to create line item:', error);
+      throw error;
     }
   }
 
@@ -297,30 +307,30 @@ class AmazonDSPService {
    * Parse geographic targeting from user input
    */
   parseGeographicTargeting(targeting) {
-    const geoTargets = []
+    const geoTargets = [];
 
     // Parse zip codes
     if (targeting.zipCodes) {
-      const zipCodes = targeting.zipCodes.split(',').map(zip => zip.trim()).filter(zip => zip)
+      const zipCodes = targeting.zipCodes.split(',').map(zip => zip.trim()).filter(zip => zip);
       zipCodes.forEach(zip => {
         geoTargets.push({
           type: 'ZIP_CODE',
           value: zip,
           name: `ZIP ${zip}`
-        })
-      })
+        });
+      });
     }
 
     // Parse DMAs
     if (targeting.dmas) {
-      const dmas = targeting.dmas.split(',').map(dma => dma.trim()).filter(dma => dma)
+      const dmas = targeting.dmas.split(',').map(dma => dma.trim()).filter(dma => dma);
       dmas.forEach(dma => {
         geoTargets.push({
           type: 'DMA',
           value: dma,
           name: dma
-        })
-      })
+        });
+      });
     }
 
     // If no specific targeting, use country-level
@@ -329,10 +339,10 @@ class AmazonDSPService {
         type: 'COUNTRY',
         value: targeting.country,
         name: targeting.country
-      })
+      });
     }
 
-    return geoTargets
+    return geoTargets;
   }
 
   /**
@@ -346,7 +356,7 @@ class AmazonDSPService {
       })),
       platform: targeting.platform,
       deviceTypes: targeting.platform === 'CONNECTED_TV' ? ['CONNECTED_TV'] : ['DESKTOP', 'MOBILE', 'TABLET']
-    }
+    };
   }
 
   /**
@@ -361,13 +371,13 @@ class AmazonDSPService {
         endDate: forecastData.endDate,
         targeting: this.formatTargeting(forecastData.targeting),
         inventory: this.formatInventoryForForecast(forecastData.inventory)
-      })
+      });
 
-      return this.processForecastResponse(response)
+      return this.processForecastResponse(response);
     } catch (error) {
-      console.error('Failed to generate forecast:', error)
+      console.error('Failed to generate forecast:', error);
       // Return mock data if forecast API fails
-      return this.generateMockForecast(forecastData)
+      return this.generateMockForecast(forecastData);
     }
   }
 
@@ -375,7 +385,7 @@ class AmazonDSPService {
    * Format inventory selection for forecast API
    */
   formatInventoryForForecast(inventory) {
-    const formattedInventory = []
+    const formattedInventory = [];
 
     // Add publisher deals
     inventory.publishers?.forEach(publisher => {
@@ -383,26 +393,26 @@ class AmazonDSPService {
         type: 'THIRD_PARTY_DEAL',
         dealId: publisher.dealId,
         platform: publisher.platform
-      })
-    })
+      });
+    });
 
     // Add contextual groups
     inventory.contextual?.forEach(context => {
       formattedInventory.push({
         type: 'CONTEXTUAL',
         contextualId: context.contextualId
-      })
-    })
+      });
+    });
 
     // Add Amazon O&O
     inventory.amazonOO?.forEach(amazon => {
       formattedInventory.push({
         type: 'AMAZON_OO',
         dealId: amazon.dealId
-      })
-    })
+      });
+    });
 
-    return formattedInventory
+    return formattedInventory;
   }
 
   /**
@@ -420,35 +430,35 @@ class AmazonDSPService {
         reach: day.reach,
         frequency: day.frequency
       })) || []
-    }
+    };
   }
 
   /**
    * Generate mock forecast data (fallback)
    */
   generateMockForecast(forecastData) {
-    const startDate = new Date(forecastData.startDate)
-    const endDate = new Date(forecastData.endDate)
-    const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24))
+    const startDate = new Date(forecastData.startDate);
+    const endDate = new Date(forecastData.endDate);
+    const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
     
-    const dailyProjections = []
-    let cumulativeReach = 0
-    const baseImpressions = Math.floor(forecastData.budget / 15) // Assuming $15 CPM
+    const dailyProjections = [];
+    let cumulativeReach = 0;
+    const baseImpressions = Math.floor(forecastData.budget / 15); // Assuming $15 CPM
     
     for (let i = 0; i < days; i++) {
-      const date = new Date(startDate)
-      date.setDate(date.getDate() + i)
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
       
-      const dailyImpressions = Math.floor(baseImpressions / days * (0.8 + Math.random() * 0.4))
-      const dailyReach = Math.floor(dailyImpressions * 0.7) // Assuming 70% unique reach
-      cumulativeReach = Math.min(cumulativeReach + dailyReach * 0.3, dailyReach * i * 0.8)
+      const dailyImpressions = Math.floor(baseImpressions / days * (0.8 + Math.random() * 0.4));
+      const dailyReach = Math.floor(dailyImpressions * 0.7); // Assuming 70% unique reach
+      cumulativeReach = Math.min(cumulativeReach + dailyReach * 0.3, dailyReach * i * 0.8);
       
       dailyProjections.push({
         date: date.toISOString().split('T')[0],
         impressions: dailyImpressions,
         reach: Math.floor(cumulativeReach),
         frequency: cumulativeReach > 0 ? (dailyImpressions * (i + 1)) / cumulativeReach : 1
-      })
+      });
     }
 
     return {
@@ -457,7 +467,7 @@ class AmazonDSPService {
       averageFrequency: baseImpressions / cumulativeReach,
       estimatedCPM: 15.0,
       dailyProjections
-    }
+    };
   }
 
   /**
@@ -474,30 +484,30 @@ class AmazonDSPService {
         filters: {
           campaignId: [campaignId]
         }
-      })
+      });
 
       // Poll for report completion
-      let reportStatus = 'PENDING'
-      let attempts = 0
-      const maxAttempts = 30
+      let reportStatus = 'PENDING';
+      let attempts = 0;
+      const maxAttempts = 30;
 
       while (reportStatus !== 'COMPLETED' && reportStatus !== 'FAILED' && attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 5000)) // Wait 5 seconds
+        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
         
-        const statusResponse = await this.makeRequest('GET', `/dsp/reports/v3/reports/${reportRequest.reportId}`)
-        reportStatus = statusResponse.status
-        attempts++
+        const statusResponse = await this.makeRequest('GET', `/dsp/reports/v3/reports/${reportRequest.reportId}`);
+        reportStatus = statusResponse.status;
+        attempts++;
       }
 
       if (reportStatus === 'COMPLETED') {
-        const reportData = await this.makeRequest('GET', `/dsp/reports/v3/reports/${reportRequest.reportId}/download`)
-        return reportData
+        const reportData = await this.makeRequest('GET', `/dsp/reports/v3/reports/${reportRequest.reportId}/download`);
+        return reportData;
       } else {
-        throw new Error('Report generation failed or timed out')
+        throw new Error('Report generation failed or timed out');
       }
     } catch (error) {
-      console.error('Failed to get campaign performance:', error)
-      throw error
+      console.error('Failed to get campaign performance:', error);
+      throw error;
     }
   }
 
@@ -509,17 +519,17 @@ class AmazonDSPService {
       const response = await this.makeRequest('POST', '/dsp/inventory/v1/search', {
         targeting: this.formatTargeting(targeting),
         inventoryTypes: ['THIRD_PARTY', 'CONTEXTUAL', 'AMAZON_OO']
-      })
+      });
 
-      return response
+      return response;
     } catch (error) {
-      console.error('Failed to get available inventory:', error)
+      console.error('Failed to get available inventory:', error);
       // Return static inventory if API fails
       return {
         thirdParty: publisherDeals,
         contextual: contextualGroups,
         amazonOO: amazonOO
-      }
+      };
     }
   }
 
@@ -528,11 +538,11 @@ class AmazonDSPService {
    */
   async updateCampaign(campaignId, updates) {
     try {
-      const response = await this.makeRequest('PUT', `/dsp/campaigns/v1/campaigns/${campaignId}`, updates)
-      return response
+      const response = await this.makeRequest('PUT', `/dsp/campaigns/v1/campaigns/${campaignId}`, updates);
+      return response;
     } catch (error) {
-      console.error('Failed to update campaign:', error)
-      throw error
+      console.error('Failed to update campaign:', error);
+      throw error;
     }
   }
 
@@ -543,11 +553,11 @@ class AmazonDSPService {
     try {
       const response = await this.makeRequest('PUT', `/dsp/campaigns/v1/campaigns/${campaignId}`, {
         status: status
-      })
-      return response
+      });
+      return response;
     } catch (error) {
-      console.error('Failed to update campaign status:', error)
-      throw error
+      console.error('Failed to update campaign status:', error);
+      throw error;
     }
   }
 
@@ -556,11 +566,11 @@ class AmazonDSPService {
    */
   async getCampaign(campaignId) {
     try {
-      const response = await this.makeRequest('GET', `/dsp/campaigns/v1/campaigns/${campaignId}`)
-      return response
+      const response = await this.makeRequest('GET', `/dsp/campaigns/v1/campaigns/${campaignId}`);
+      return response;
     } catch (error) {
-      console.error('Failed to get campaign:', error)
-      throw error
+      console.error('Failed to get campaign:', error);
+      throw error;
     }
   }
 
@@ -569,15 +579,17 @@ class AmazonDSPService {
    */
   async getCampaigns(filters = {}) {
     try {
-      const queryParams = new URLSearchParams(filters).toString()
-      const response = await this.makeRequest('GET', `/dsp/campaigns/v1/campaigns?${queryParams}`)
-      return response
+      const queryParams = new URLSearchParams(filters).toString();
+      const response = await this.makeRequest('GET', `/dsp/campaigns/v1/campaigns?${queryParams}`);
+      return response;
     } catch (error) {
-      console.error('Failed to get campaigns:', error)
-      throw error
+      console.error('Failed to get campaigns:', error);
+      throw error;
     }
   }
 }
 
-export { AmazonDSPService }
+export { AmazonDSPService };
+
+
 

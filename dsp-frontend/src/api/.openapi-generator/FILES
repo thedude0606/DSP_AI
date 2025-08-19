@@ -1,0 +1,11 @@
+.openapi-generator-ignore
+apis/ProfilesApi.ts
+apis/index.ts
+index.ts
+models/AccountInfo.ts
+models/AccountType.ts
+models/CountryCode.ts
+models/Profile.ts
+models/ProfileResponse.ts
+models/index.ts
+runtime.ts

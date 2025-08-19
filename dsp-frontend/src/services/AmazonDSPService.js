@@ -11,7 +11,7 @@ class AmazonDSPService {
     this.clientSecret = credentials.clientSecret;
     this.refreshToken = credentials.refreshToken;
     this.accessToken = null;
-    this.baseURL = "http://localhost:3000"; // Base URL for the proxy
+    this.baseURL = "http://localhost:8080"; // Base URL for the proxy
 
     this.profilesApi = new ProfilesApi(new Configuration({
       basePath: `${this.baseURL}/advertising-api`,

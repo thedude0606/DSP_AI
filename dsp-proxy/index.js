@@ -2,7 +2,7 @@ const express = require("express");
 const { createProxyMiddleware } = require("http-proxy-middleware");
 
 const app = express();
-const PORT = 3000;
+const PORT = 8080;
 
 // CORS middleware - applied to all requests
 app.use((req, res, next) => {

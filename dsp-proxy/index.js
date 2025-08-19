@@ -64,11 +64,12 @@ app.use(
       "^/advertising-api": "",
     },
     onProxyReq: (proxyReq, req, res) => {
-      // Add client ID header for Amazon Advertising API
+      if (req.headers["authorization"]) {
+        proxyReq.setHeader("Authorization", `Bearer ${req.headers["authorization"]}`);
+      }
       if (req.headers["amazon-advertising-api-clientid"]) {
         proxyReq.setHeader("Amazon-Advertising-API-ClientId", req.headers["amazon-advertising-api-clientid"]);
       }
-      // Add scope header for Amazon Advertising API
       if (req.headers["amazon-advertising-api-scope"]) {
         proxyReq.setHeader("Amazon-Advertising-API-Scope", req.headers["amazon-advertising-api-scope"]);
       }

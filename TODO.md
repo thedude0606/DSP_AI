@@ -13,7 +13,7 @@
 ### Core DSP Functionality Phase (Current)
 - [x] Test current UI functionality with working authentication
 - [x] Implement profile/entity loading in the UI
-- [ ] Fix any API endpoint routing issues in the proxy
+- [x] Fix any API endpoint routing issues in the proxy
 - [ ] Implement campaign creation workflow
 - [ ] Add error handling and loading states
 - [ ] Test inventory selection functionality

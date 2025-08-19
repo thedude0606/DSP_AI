@@ -1,11 +1,11 @@
 ## To-Do List
 
 - [x] Update `AmazonDSPService.js` authentication method (Completed)
-- [ ] Push code changes to GitHub (In Progress)
+- [x] Push code changes to GitHub (Completed)
 - [x] Update `PROGRESS.md` (Completed)
 - [x] Update `TODO.md` (Completed)
-- [ ] Update `DECISIONS.md` (Not Started)
-- [ ] Guide user to test authentication fix locally (Not Started)
+- [x] Update `DECISIONS.md` (Completed)
+- [ ] Guide user to test authentication fix locally (In Progress)
 - [ ] Troubleshoot API connectivity issues if they persist (Not Started)
 
 

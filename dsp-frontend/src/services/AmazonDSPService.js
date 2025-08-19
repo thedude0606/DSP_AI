@@ -27,9 +27,9 @@ class AmazonDSPService {
       const response = await fetch(`${this.baseURL}/auth/o2/token`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Content-Type': 'application/json'
         },
-        body: new URLSearchParams({
+        body: JSON.stringify({
           grant_type: 'refresh_token',
           refresh_token: this.refreshToken,
           client_id: this.clientId,

@@ -27,3 +27,10 @@
 - **Rationale:** Resolved previous internal Git errors in the sandbox environment, allowing for direct pushing of code updates.
 - **Impact:** Streamlines the development workflow by enabling continuous integration and easy access to the latest code for the user.
 
+
+
+### Proxy and Frontend Port Change
+- **Decision:** Changed the proxy server port from `3000` to `8080` and updated the frontend `baseURL` accordingly.
+- **Rationale:** Attempted as a troubleshooting step to see if a different port would bypass any unforeseen network or routing issues, although a `403 Forbidden` error typically indicates an authorization issue from the API server itself.
+- **Impact:** Requires users to start the proxy on the new port and ensures the frontend communicates with the correct proxy endpoint.
+

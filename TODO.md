@@ -5,6 +5,7 @@
 - [x] Update `PROGRESS.md` (Completed)
 - [x] Update `TODO.md` (Completed)
 - [x] Update `DECISIONS.md` (Completed)
+- [x] Change proxy and frontend ports (Completed)
 - [ ] Guide user to test authentication fix locally (In Progress)
 - [ ] Troubleshoot API connectivity issues if they persist (Not Started)
 

@@ -1,24 +1,57 @@
 const express = require("express");
 const { createProxyMiddleware } = require("http-proxy-middleware");
+const bodyParser = require("body-parser");
+const fetch = require("node-fetch"); // Import node-fetch for server-side requests
 
 const app = express();
 const PORT = 8080;
+
+// Use body-parser to parse JSON and URL-encoded bodies
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 // CORS middleware - applied to all requests
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*"); // Allow all origins
   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization, Amazon-Advertising-API-ClientId, Amazon-Advertising-API-Scope");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization, Amazon-Advertising-API-ClientId, Amazon-Advertising-API-Scope, Amazon-Advertising-API-AdvertiserId, Amazon-Advertising-API-EntityId");
   
   // Handle preflight OPTIONS requests
   if (req.method === "OPTIONS") {
-    // Add a dummy AdvertiserId for OPTIONS requests to satisfy potential server-side checks
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization, Amazon-Advertising-API-ClientId, Amazon-Advertising-API-Scope, Amazon-Advertising-API-AdvertiserId, Amazon-Advertising-API-EntityId");
-    res.header("Amazon-Advertising-API-AdvertiserId", "dummy_advertiser_id"); // Dummy value
-    res.header("Amazon-Advertising-API-EntityId", "dummy_entity_id"); // Dummy value
     return res.sendStatus(200);
   }
   next();
+});
+
+// New endpoint for server-side authentication
+app.post("/proxy-auth/token", async (req, res) => {
+  const { grant_type, refresh_token, client_id, client_secret } = req.body;
+
+  try {
+    const authResponse = await fetch("https://api.amazon.com/auth/o2/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        grant_type,
+        refresh_token,
+        client_id,
+        client_secret,
+      }),
+    });
+
+    const data = await authResponse.json();
+    if (!authResponse.ok) {
+      console.error("Amazon Auth API error:", data);
+      return res.status(authResponse.status).json(data);
+    }
+
+    res.json(data);
+  } catch (error) {
+    console.error("Proxy authentication error:", error);
+    res.status(500).json({ error: "Internal server error during authentication" });
+  }
 });
 
 // Proxy for Amazon Advertising API
@@ -45,22 +78,9 @@ app.use(
   })
 );
 
-// Proxy for Amazon Authentication API
-app.use(
-  "/auth",
-  createProxyMiddleware({
-    target: "https://api.amazon.com",
-    changeOrigin: true,
-    pathRewrite: {
-      "^/auth": "",
-    },
-    secure: false, // For development, set to true in production
-    logLevel: "debug",
-  })
-);
-
 app.listen(PORT, () => {
   console.log(`Proxy server listening on port ${PORT}`);
 });
+
 
 

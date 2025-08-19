@@ -24,12 +24,17 @@ class AmazonDSPService {
    */
   async authenticate() {
     try {
-      const response = await fetch(`${this.baseURL}/auth/o2/token`, {
+      const response = await fetch(`${this.baseURL}/proxy-auth/token`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Content-Type': 'application/json'
         },
-        body: `grant_type=refresh_token&refresh_token=${this.refreshToken}&client_id=${this.clientId}&client_secret=${this.clientSecret}`
+        body: JSON.stringify({
+          grant_type: 'refresh_token',
+          refresh_token: this.refreshToken,
+          client_id: this.clientId,
+          client_secret: this.clientSecret
+        })
       });
 
       if (!response.ok) {
